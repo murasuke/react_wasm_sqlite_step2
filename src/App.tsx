@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import * as Comlink from 'comlink';
 import './App.css';
 
 const worker = new ComlinkWorker<typeof import('./worker')>(
@@ -34,9 +33,12 @@ function App() {
     });
 
     // 行追加(prepare & bind)
-    // const stmt = await worker.prepare('insert into users values(?, ?)');
-    // stmt.bind([max + 2, `Bob${max + 2}`]).stepReset();
-    // stmt.finalize();
+    // worker側からPreparedStatementを返してもメソッドを呼べないため、
+    // 値自体はWeb Worker側で保持して、キー(handle)経由で操作する
+    const handle = await worker.prepare('insert into users values(?, ?)');
+    await worker.binding(handle, [max + 2, `Bob${max + 2}`]);
+    await worker.stepReset(handle);
+    await worker.finalize(handle);
 
     // 結果出力
     const values = await worker.exec({
@@ -59,69 +61,3 @@ function App() {
 }
 
 export default App;
-
-// function App() {
-//   // ComlinkWorkerをuseRefで保持
-//   const workerRef = useRef<Remote<typeof import('./worker')> | null>(null);
-//   useEffect(() => {
-//     // Workerを生成
-//     workerRef.current = new ComlinkWorker<typeof import('./worker')>(
-//       new URL('./worker', import.meta.url)
-//     );
-
-//     return () => {
-//       // clean up
-//       workerRef.current?.closeDB();
-//     };
-//   }, []);
-
-//   // comlink(web worker)による非同期処理。
-//   const connectDB = async () => {
-//     if (workerRef.current) {
-//       await workerRef.current.connectDatabase();
-//       // テーブル作成
-//       await workerRef.current.exec(
-//         'CREATE TABLE IF NOT EXISTS users(id INTEGER, name TEXT)'
-//       );
-//     }
-//   };
-
-//   const execute = async () => {
-//     if (workerRef.current) {
-//       const select_max = 'SELECT max(id) as max_count FROM users';
-//       const max =
-//         ((await workerRef.current.selectValue(select_max)) as number) ?? 0;
-
-//       // 行追加(exec)
-//       await workerRef.current.exec({
-//         sql: 'insert into users values(?,?)',
-//         bind: [max + 1, `Alice${max + 1}`],
-//       });
-
-//       // 行追加(prepare & bind)
-//       // const stmt = db.prepare('insert into users values(?, ?)');
-//       // stmt.bind([max + 2, `Bob${max + 2}`]).stepReset();
-//       // stmt.finalize();
-
-//       // 結果出力
-//       const values = await workerRef.current.exec({
-//         sql: 'SELECT * FROM users',
-//         rowMode: 'object',
-//         returnValue: 'resultRows',
-//       });
-
-//       console.log(values);
-//     }
-//   };
-
-//   return (
-//     <div>
-//       <button onClick={() => connectDB()}>DB生成</button>
-//       <br />
-//       <button onClick={() => execute()}>クエリ実行</button>
-//       <div className="return">実行結果はDevToolsのConsoleに出力されます。</div>
-//     </div>
-//   );
-// }
-
-// export default App;

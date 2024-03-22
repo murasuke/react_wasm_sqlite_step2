@@ -3,12 +3,23 @@ import sqlite3InitModule, {
   Sqlite3Static,
   FlexibleString,
   PreparedStatement,
+  BindingSpec,
 } from '@sqlite.org/sqlite-wasm';
 
 const log = (...args: any[]) => console.log(...args); // eslint-disable-line
 const error = (...args: any[]) => console.error(...args); // eslint-disable-line
 
 let db: Database | null = null;
+
+/**
+ * prepare()で動的に生成するStatementは、メインUIスレッド側に渡せないので
+ * JSON.stringify()をキーにして、objectStoreに保持する
+ * メインUIスレッド側には、キーを返す(handleとして利用する)
+ *  ⇒ handleはhash値にした方がよさそうだが簡易的な実装なので
+ */
+const objectStore: {
+  [key: string]: object;
+} = {};
 
 /**
  * sqlite3に接続してDBを作成
@@ -73,6 +84,12 @@ export const connectDatabase = async (): Promise<Database> => {
   throw new Error('unknown error');
 };
 
+/**
+ * execのラッパー
+ * @param sql
+ * @param opts
+ * @returns
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const exec = (sql: any, opts: any = {}): Database => {
   if (!db) {
@@ -86,18 +103,63 @@ export const exec = (sql: any, opts: any = {}): Database => {
   }
 };
 
-export const prepare = (sql: FlexibleString): PreparedStatement => {
+export const prepare = (sql: FlexibleString): string => {
   if (!db) {
     throw new Error();
   }
+  const stmt = db.prepare(sql);
+  // const hash = await sha256(JSON.stringify(stmt));
+  const handle = JSON.stringify(stmt);
+  objectStore[handle] = stmt;
+  return handle;
+};
 
-  return db.prepare(sql);
+/**
+ * PreparedStatement::bind()のラッパー
+ * (javascriptのbindとメソッド名が被るのでbindingに変更)
+ * @param handle
+ * @param binding
+ * @returns
+ */
+export const binding = (handle: string, binding: BindingSpec): string => {
+  if (!db) {
+    throw new Error();
+  }
+  const stmt = objectStore[handle] as PreparedStatement;
+  stmt.bind(binding);
+  return handle;
+};
+
+/**
+ * PreparedStatement::stepReset()のラッパー
+ * @param handle
+ * @returns
+ */
+export const stepReset = (handle: string): string => {
+  if (!db) {
+    throw new Error();
+  }
+  const stmt = objectStore[handle] as PreparedStatement;
+  stmt.stepReset();
+  return handle;
+};
+
+/**
+ * PreparedStatement::finalize()のラッパー
+ * @param handle
+ * @returns
+ */
+export const finalize = (handle: string): number | undefined => {
+  if (!db) {
+    throw new Error();
+  }
+  const stmt = objectStore[handle] as PreparedStatement;
+  return stmt.finalize();
 };
 
 export const selectValue = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sql: any, // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  bind?: any, // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sql: FlexibleString, // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bind?: BindingSpec, // eslint-disable-next-line @typescript-eslint/no-explicit-any
   asType?: any
 ): number | undefined => {
   if (!db) {
