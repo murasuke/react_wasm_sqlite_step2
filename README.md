@@ -8,6 +8,8 @@
 * DBファイルは[OPFS(オリジンプライベートファイルシステム)](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)上に永続化します（ブラウザを閉じてもデータは失われません。GB単位の大きなデータを扱うことが可能です）
 * Web Workerを容易に扱うために、[Comlink](https://github.com/GoogleChromeLabs/comlink)を利用します
 
+  [プログラムソース](https://github.com/murasuke/react_wasm_sqlite_step2/)
+
 
 [ReactでSQLite Wasmを実行して、localStorageに永続化する最小のサンプル](https://github.com/murasuke/react_wasm_sqlite_step1)は、
 メインスレッドで実行しているため？かSQLiteの読み込み時に警告が出ていました。
