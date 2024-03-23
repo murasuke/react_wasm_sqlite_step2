@@ -109,6 +109,7 @@ export const selectValue = (
  * (値はシリアライズされて渡されるが、UIスレッドからメソッド呼び出しができない)
  * そのため、StatementをobjectStoreに保持して、
  * メインUIスレッド側には、値を取得するためのキー(pointer)を返します
+ * (UIスレッド側では、役割を明確にするためhandleという変数名にしています)
  */
 const objectStore: {
   [key: number]: object;

@@ -3,21 +3,26 @@
 ## はじめに
 
 [ReactでSQLite Wasmを実行して、localStorageに永続化する最小のサンプル](https://github.com/murasuke/react_wasm_sqlite_step1)は、
-メインスレッドで実行しているので、sqliteの読み込み時に警告が出てしまいます。
+メインスレッドで実行しているため？かsqliteの読み込み時に警告が出てしまいます。
 
 `Ignoring inability to install OPFS sqlite3_vfs: The OPFS sqlite3_vfs cannot run in the main thread because it requires Atomics.wait().`
 
 ※localStorageに保存しているのに関わらず、なぜ警告が出るのかは不明・・・
 
-そこで、sqliteをWeb Worker側で実行するように変更して、[OPFS](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)に永続化してみます。
+そこで、sqliteをWeb Worker側で実行するように変更することで、[OPFS](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)にデータを保存できるようにしてみます。
 
 
+### DBファイルの保存先`OPFS`(オリジンプライベートファイルシステム)について
+DBファイルは[OPFS(オリジンプライベートファイルシステム)](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)という仮想的なファイルシステムに保存します。SessionStorageとLocalStorageと異なり、GB単位のサイズを扱うことが可能です。
 
-### [Comlink](https://github.com/GoogleChromeLabs/comlink)とは
+ブラウザのDevToolsからは操作ができないため、Chrome拡張の[OPFS explorer](https://chromewebstore.google.com/detail/opfs-explorer/acndjpgkpaclldomagafnognkcgjignd?pli=1)を入れておくと便利です（削除したい場合など）
+
+
+### Web Workerを使いやすくするライブラリ[Comlink](https://github.com/GoogleChromeLabs/comlink)とは
 
 ComLinkは、Web Workerの呼び出しを簡単にしてくれるライブラリです。
 
-ブラウザからWeb Workerの呼び出しは、postMessag()経由で行います。
+通常、ブラウザからWeb Workerの呼び出しは、postMessage()を利用します。
 
 * Web Worker側で実行する処理(Comlinkを使用しない場合)
 ```javascript:worker.js
@@ -61,17 +66,17 @@ const result = await api.multiply(10);
 console.log(result); // 20
 ```
 
-### DBファイルの保存先について
-DBファイルは[OPFS(オリジンプライベートファイルシステム)](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)という仮想的なファイルシステムに保存されます。SessionStorageとLocalStorageと異なり、GB単位のサイズを扱うことが可能です。
-
-ブラウザのDevToolsからは操作ができないため、Chrome拡張の[OPFS explorer](https://chromewebstore.google.com/detail/opfs-explorer/acndjpgkpaclldomagafnognkcgjignd?pli=1)を入れておくと便利です（削除したい場合など）
 
 ## 作成手順
 
 * 画面イメージ
+
 ![img10](./img/img10.png)
 
-### プロジェクト作成
+DB作成(DBのロードとテーブルの作成)と、クエリの実行サンプルです。
+
+## プロジェクト作成
+
 * viteでReactプロジェクトを作成
 
 ```bash
@@ -88,7 +93,7 @@ $ npm i @sqlite.org/sqlite-wasm
 * `vite.config.ts`を修正
 
 `headers`と`optimizeDeps`を追加します。
-`Cross-Origin-Opener-Policy`と`Cross-Origin-Embedder-Policy`は、`SharedArrayBuffer`を利用するために必要な設定です(sqliteが内部的に利用)。
+`Cross-Origin-Opener-Policy`と`Cross-Origin-Embedder-Policy`は、`OPFS`や`SharedArrayBuffer`を利用するために必要です(sqliteが内部的に利用)。
 
 ```typescript:vite.config.ts
 import { defineConfig } from 'vite';
@@ -111,7 +116,6 @@ export default defineConfig({
 
 ### Comlinkをインストール
 
-* comlinkをインストールする
 ```bash
 $ npm i comlink
 $ npm i -D vite-plugin-comlink
@@ -154,7 +158,7 @@ export default defineConfig({
 
 ### Web Worker
 
-sqliteの処理のうち一部の機能をexportして、Comlink経由で呼び出し可能にします
+sqliteの処理のうち一部の機能をexportして、Comlink経由で呼び出しができるようにします。
 
 * db接続(`connectDB()`)
 * クエリ実行(`exec()`)
@@ -270,10 +274,10 @@ export const selectValue = (
 
 #### プリペアードステートメントについて
 
- `Database::prepare()`は`PreparedStatement`を返しますが、メインUIスレッド側に渡せません
- (プロパティーの値はシリアライズされるので渡されるが、UIスレッドからメソッド呼び出しができない)
+ `Database::prepare()`は`PreparedStatement`を返しますが、メインUIスレッド側に渡せません。
+ (プロパティーの値はシリアライズされるので渡されるが、UIスレッドから`PreparedStatement`のメソッド呼び出しができない)
 
- そのため、`PreparedStatement`を`objectStore`に保持し、メインUIスレッド側には値を取得するためのキー(pointer)を返すようにします
+ そのため、`PreparedStatement`をWorker内の`objectStore`に保持し、メインUIスレッド側には値を取得するためのキー(pointer)を返すようにします
 
 
 * 利用サンプル
@@ -294,6 +298,7 @@ await worker.stepFinalize(handle);
  * (値はシリアライズされて渡されるが、UIスレッドからメソッド呼び出しができない)
  * そのため、StatementをobjectStoreに保持して、
  * メインUIスレッド側には、値を取得するためのキー(pointer)を返します
+ * (UIスレッド側では、役割を明確にするためhandleという変数名にしています)
  */
 const objectStore: {
   [key: number]: object;
@@ -353,6 +358,7 @@ export const stepFinalize = (handle: number): boolean => {
 
 * ボタンクリックでDB接続とクエリ実行の処理を呼び出す
 * 実行したクエリはコンソールに表示される
+* 詳細は、プログラムのコメントを参照
 
 ```typescript:./src/App.tsx
 import './App.css';
@@ -446,13 +452,14 @@ $ npm run dev
 
 
 * `クエリ実行`
-  * `insert`を3回実行して、データが3行追加されたことがわかります
+  * `insert`を3回実行した結果、データが3行追加されたことがわかります
 
   ![img30](./img/img30.png)
 
 
 ## 参考
+https://github.com/sqlite/sqlite-wasm
 
-https://www.npmjs.com/package/vite-plugin-comlink
+https://github.com/mathe42/vite-plugin-comlink
 
-https://dev.to/franciscomendes10866/how-to-use-service-workers-with-react-17p2
+
