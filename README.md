@@ -1,4 +1,4 @@
-# ComlinkでWeb Workerを非同期関数として呼び出す(React+vite)
+# sqliteをWeb Workerで実行するサンプル(React+vite+comlink)
 
 ## はじめに
 
