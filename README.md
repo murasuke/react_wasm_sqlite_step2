@@ -19,7 +19,7 @@ ComLinkは、Web Workerの呼び出しを簡単にしてくれるライブラリ
 
 ブラウザからWeb Workerの呼び出しは、postMessag()経由で行います。
 
-* Web Worker側で実行する処理
+* Web Worker側で実行する処理(Comlinkを使用しない場合)
 ```javascript:worker.js
 self.onmessage = function(event) {
     var data = event.data;
