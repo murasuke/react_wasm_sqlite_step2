@@ -1,19 +1,26 @@
-# sqliteをWeb Workerで実行するサンプル(React+vite+comlink)
+# SQLiteをブラウザ上で実行するサンプル(React+vite+comlink)
 
 ## はじめに
 
+### 特徴
+* ブラウザ上でリレーショナルデータベースの`sqlite-wasm`を実行します（sqlを実行できます）
+* SQLiteはWeb Workerで実行するため、DB処理がUIスレッドをブロックしません
+* DBファイルは[OPFS(オリジンプライベートファイルシステム)](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)上に永続化します（ブラウザを閉じてもデータは失われません。GB単位の大きなデータを扱うことが可能です）
+* Web Workerを容易に扱うために、[Comlink](https://github.com/GoogleChromeLabs/comlink)を利用します
+
+
 [ReactでSQLite Wasmを実行して、localStorageに永続化する最小のサンプル](https://github.com/murasuke/react_wasm_sqlite_step1)は、
-メインスレッドで実行しているため？かsqliteの読み込み時に警告が出てしまいます。
+メインスレッドで実行しているため？かSQLiteの読み込み時に警告が出ていました。
 
 `Ignoring inability to install OPFS sqlite3_vfs: The OPFS sqlite3_vfs cannot run in the main thread because it requires Atomics.wait().`
 
 ※localStorageに保存しているのに関わらず、なぜ警告が出るのかは不明・・・
 
-そこで、sqliteをWeb Worker側で実行するように変更することで、[OPFS](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)にデータを保存できるようにしてみます。
+そこで、SQLiteをWeb Worker側で実行するように変更して、[OPFS](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)へ保存できるようにしてみます。
 
 
 ### DBファイルの保存先`OPFS`(オリジンプライベートファイルシステム)について
-DBファイルは[OPFS(オリジンプライベートファイルシステム)](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)という仮想的なファイルシステムに保存します。SessionStorageとLocalStorageと異なり、GB単位のサイズを扱うことが可能です。
+DBファイルは[OPFS(オリジンプライベートファイルシステム)](https://developer.mozilla.org/ja/docs/Web/API/File_System_API/Origin_private_file_system)という仮想的なファイルシステムに保存します。SessionStorageやLocalStorageと異なり、GB単位のサイズを扱うことが可能です。
 
 ブラウザのDevToolsからは操作ができないため、Chrome拡張の[OPFS explorer](https://chromewebstore.google.com/detail/opfs-explorer/acndjpgkpaclldomagafnognkcgjignd?pli=1)を入れておくと便利です（削除したい場合など）
 
@@ -85,7 +92,7 @@ $ cd react_wasm_sqlite_step2
 $ npm install
 ```
 
-### sqliteをインストール
+### SQLiteをインストール
 ```bash
 $ npm i @sqlite.org/sqlite-wasm
 ```
@@ -93,7 +100,7 @@ $ npm i @sqlite.org/sqlite-wasm
 * `vite.config.ts`を修正
 
 `headers`と`optimizeDeps`を追加します。
-`Cross-Origin-Opener-Policy`と`Cross-Origin-Embedder-Policy`は、`OPFS`や`SharedArrayBuffer`を利用するために必要です(sqliteが内部的に利用)。
+`Cross-Origin-Opener-Policy`と`Cross-Origin-Embedder-Policy`は、`OPFS`や`SharedArrayBuffer`を利用するために必要です(SQLiteが内部的に利用)。
 
 ```typescript:vite.config.ts
 import { defineConfig } from 'vite';
@@ -158,7 +165,7 @@ export default defineConfig({
 
 ### Web Worker
 
-sqliteの処理のうち一部の機能をexportして、Comlink経由で呼び出しができるようにします。
+SQLiteの処理のうち一部の機能をexportして、Comlink経由で呼び出しができるようにします。
 
 * db接続(`connectDB()`)
 * クエリ実行(`exec()`)
