@@ -466,6 +466,15 @@ $ npm run dev
   ![img30](./img/img30.png)
 
 
+## おまけ
+
+GitHub Pagesで公開すると、http headerに`Cross-Origin-Opener-Policy`と`Cross-Origin-Embedder-Policy`を指定できないため`OPFS`が利用できません。
+```
+Ignoring inability to install OPFS sqlite3_vfs: Cannot install OPFS: Missing SharedArrayBuffer and/or Atomics. The server must emit the COOP/COEP response headers to enable those.
+```
+
+
+
 ## 参考
 https://github.com/sqlite/sqlite-wasm
 
