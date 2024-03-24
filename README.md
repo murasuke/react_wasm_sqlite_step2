@@ -10,6 +10,9 @@
 
   [プログラムソース](https://github.com/murasuke/react_wasm_sqlite_step2/)
 
+  [動作確認ページ(GitHub Pages)](https://murasuke.github.io/react_wasm_sqlite_step2/)
+
+---
 
 [ReactでSQLite Wasmを実行して、localStorageに永続化する最小のサンプル](https://github.com/murasuke/react_wasm_sqlite_step1)は、
 メインスレッドで実行しているため？かSQLiteの読み込み時に警告が出ていました。
@@ -466,9 +469,32 @@ $ npm run dev
   ![img30](./img/img30.png)
 
 
+## おまけ
+
+GitHub Pagesで公開すると、http headerに`Cross-Origin-Opener-Policy`と`Cross-Origin-Embedder-Policy`を指定できないため`OPFS`が利用できません。
+```
+Ignoring inability to install OPFS sqlite3_vfs: Cannot install OPFS: Missing SharedArrayBuffer and/or Atomics. The server must emit the COOP/COEP response headers to enable those.
+```
+
+何とかする方法をないか探してみたところ、Service WorkerでHTTPヘッダ書き換えてくれる[coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker)というライブラリを入れると、`OPFS`を利用できるようになりました。
+
+* [coi-serviceworker.js](https://github.com/gzuidhof/coi-serviceworker/blob/master/coi-serviceworker.js)をダウンロードします
+* ダウンロードしたファイルを`/public`フォルダに保存します
+* `index.html`の&lt;header&gt;内で`coi-serviceworker.js`ファイルを読み込みます
+
+```html:index.html
+<header>
+  <script src="/coi-serviceworker.js"></script>
+```
+
+
+上記の変更をすることで、[GitHub Pages](https://murasuke.github.io/react_wasm_sqlite_step2/)にホストした場合でもデータが永続化されるようになりました(F5でリロードしても前回のデータが残る)
+https://murasuke.github.io/react_wasm_sqlite_step2/
+
+
 ## 参考
 https://github.com/sqlite/sqlite-wasm
 
 https://github.com/mathe42/vite-plugin-comlink
 
-
+https://cloud.flect.co.jp/entry/2022/10/14/115344
